@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS placement_talk (
   FOREIGN KEY (company_id) REFERENCES company(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_talk_at ON placement_talk (talk_at);
+CREATE INDEX idx_talk_at ON placement_talk (talk_at);
 
 CREATE TABLE IF NOT EXISTS opportunity (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -35,4 +35,4 @@ CREATE TABLE IF NOT EXISTS opportunity (
   deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE INDEX IF NOT EXISTS idx_opportunity_type_deadline ON opportunity (type, deadline);
+CREATE INDEX idx_opportunity_type_deadline ON opportunity (type, deadline);

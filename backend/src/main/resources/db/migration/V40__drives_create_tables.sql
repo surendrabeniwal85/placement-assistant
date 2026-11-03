@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS placement_drive (
   FOREIGN KEY (company_id) REFERENCES company(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_drive_status_date ON placement_drive (status, drive_date);
+CREATE INDEX idx_drive_status_date ON placement_drive (status, drive_date);
 
 CREATE TABLE IF NOT EXISTS eligibility_rule (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,

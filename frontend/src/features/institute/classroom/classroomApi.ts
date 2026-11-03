@@ -8,7 +8,9 @@ import type {
  * If the shared services/apiClient.ts already handles JWT/session headers,
  * replace request() with that client's request method; do not duplicate auth.
  */
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? 'https://placement-assistant-backend-hyfp.onrender.com' : '')
+).replace(/\/$/, '');
 const ROOT = `${API_BASE}/api/v1`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

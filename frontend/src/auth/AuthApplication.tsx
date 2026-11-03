@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { resolveRegisteredView, type RegisteredView } from '../app/routes';
+import {
+  resolveRegisteredView,
+  isProtectedPath,
+  normalizePath,
+  type RegisteredView,
+} from '../app/routes';
 import InstituteLogin from '../pages/InstituteLogin';
 import PlacementLogin from '../pages/PlacementLogin';
 import RegisterStudent from '../pages/RegisterStudent';
@@ -7,21 +12,43 @@ import ResetPassword from '../pages/ResetPassword';
 import PortalSelection from './PortalSelection';
 import PortalDashboard from './PortalDashboard';
 import type { AuthenticatedSession, Portal } from './authApi';
+import { getStoredSession, saveStoredSession, clearStoredSession } from './sessionStore';
 import './auth.css';
 
 function currentPath(): string {
-  return window.location.pathname;
+  return normalizePath(window.location.pathname);
 }
 
 export default function AuthApplication() {
   const [pathname, setPathname] = useState(currentPath);
-  const [session, setSession] = useState<AuthenticatedSession | null>(null);
-  const [portal, setPortal] = useState<Portal | null>(null);
+  const [session, setSession] = useState<AuthenticatedSession | null>(() => {
+    const stored = getStoredSession();
+    return stored ? stored.session : null;
+  });
+  const [portal, setPortal] = useState<Portal | null>(() => {
+    const stored = getStoredSession();
+    return stored ? stored.portal : null;
+  });
 
   function navigate(path: string) {
-    window.history.pushState({}, '', path);
-    setPathname(path);
+    const normalized = normalizePath(path);
+    window.history.pushState({}, '', normalized);
+    setPathname(normalized);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handleAuthenticated(authenticatedSession: AuthenticatedSession, selectedPortal: Portal) {
+    saveStoredSession(authenticatedSession, selectedPortal);
+    setSession(authenticatedSession);
+    setPortal(selectedPortal);
+    navigate('/auth/session');
+  }
+
+  function handleSignOut() {
+    clearStoredSession();
+    setSession(null);
+    setPortal(null);
+    navigate('/');
   }
 
   useEffect(() => {
@@ -32,11 +59,19 @@ export default function AuthApplication() {
 
   useEffect(() => {
     if (!session) return undefined;
+    const stored = getStoredSession();
+    const remainingSeconds = stored
+      ? Math.max(0, session.expiresIn - (Date.now() - stored.storedAt) / 1000)
+      : session.expiresIn;
+
+    if (remainingSeconds <= 0) {
+      handleSignOut();
+      return undefined;
+    }
+
     const timeout = window.setTimeout(() => {
-      setSession(null);
-      setPortal(null);
-      navigate('/');
-    }, session.expiresIn * 1000);
+      handleSignOut();
+    }, remainingSeconds * 1000);
     return () => window.clearTimeout(timeout);
   }, [session]);
 
@@ -44,16 +79,18 @@ export default function AuthApplication() {
 
   // Authenticated State -> Render Full Interactive Portal Dashboard
   if (session) {
-    if (view === 'AUTH_SESSION' || view === 'PORTAL_DASHBOARD' || pathname.startsWith('/dashboard') || pathname.startsWith('/portal')) {
+    if (
+      view === 'AUTH_SESSION' ||
+      view === 'PORTAL_DASHBOARD' ||
+      isProtectedPath(pathname) ||
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/portal')
+    ) {
       return (
         <PortalDashboard
           session={session}
           portal={portal ?? 'INSTITUTE'}
-          onSignOut={() => {
-            setSession(null);
-            setPortal(null);
-            navigate('/');
-          }}
+          onSignOut={handleSignOut}
         />
       );
     }
@@ -73,9 +110,7 @@ export default function AuthApplication() {
     return (
       <InstituteLogin
         onAuthenticated={(authenticatedSession) => {
-          setSession(authenticatedSession);
-          setPortal('INSTITUTE');
-          navigate('/auth/session');
+          handleAuthenticated(authenticatedSession, 'INSTITUTE');
         }}
         onChangePortal={() => navigate('/')}
         onResetPassword={() => navigate('/institute/reset-password')}
@@ -88,9 +123,7 @@ export default function AuthApplication() {
     return (
       <PlacementLogin
         onAuthenticated={(authenticatedSession) => {
-          setSession(authenticatedSession);
-          setPortal('PLACEMENT');
-          navigate('/auth/session');
+          handleAuthenticated(authenticatedSession, 'PLACEMENT');
         }}
         onChangePortal={() => navigate('/')}
         onResetPassword={() => navigate('/placement/reset-password')}
@@ -119,21 +152,47 @@ export default function AuthApplication() {
     );
   }
 
-  // Active Session Default fallback or 404 / Unauthorized Handlers
+  // Protected route accessed without active session -> Redirect to appropriate login flow
+  if (!session && isProtectedPath(pathname)) {
+    const targetLogin = pathname.startsWith('/placement') ? '/placement/login' : '/institute/login';
+    if (typeof window !== 'undefined' && window.location.pathname !== targetLogin) {
+      window.history.replaceState({}, '', targetLogin);
+    }
+    if (targetLogin === '/placement/login') {
+      return (
+        <PlacementLogin
+          onAuthenticated={(authenticatedSession) => {
+            handleAuthenticated(authenticatedSession, 'PLACEMENT');
+          }}
+          onChangePortal={() => navigate('/')}
+          onResetPassword={() => navigate('/placement/reset-password')}
+        />
+      );
+    }
+    return (
+      <InstituteLogin
+        onAuthenticated={(authenticatedSession) => {
+          handleAuthenticated(authenticatedSession, 'INSTITUTE');
+        }}
+        onChangePortal={() => navigate('/')}
+        onResetPassword={() => navigate('/institute/reset-password')}
+        onRegister={() => navigate('/institute/register')}
+      />
+    );
+  }
+
+  // Active Session Default fallback
   if (session) {
     return (
       <PortalDashboard
         session={session}
         portal={portal ?? 'INSTITUTE'}
-        onSignOut={() => {
-          setSession(null);
-          setPortal(null);
-          navigate('/');
-        }}
+        onSignOut={handleSignOut}
       />
     );
   }
 
+  // Unknown route -> 404 Not Found Card
   return (
     <main className="auth-page pa-foundation">
       <section className="auth-card pa-card pa-foundation" aria-labelledby="portal-title">

@@ -16,10 +16,12 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+!frontend/.env.production
 application-local.properties
 application-local.yml
 *.pem
 *.key
+startup-log.txt
 
 # IDE / OS
 .vscode/*

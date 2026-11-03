@@ -94,7 +94,10 @@ export function getApiBaseUrl(): string {
   if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  // Default to empty string for same-origin proxy in development or Render
+  if (import.meta.env.PROD) {
+    return 'https://placement-assistant-backend-hyfp.onrender.com';
+  }
+  // Default to empty string for same-origin proxy in development
   return '';
 }
 

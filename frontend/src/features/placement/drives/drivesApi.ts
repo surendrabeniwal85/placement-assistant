@@ -3,7 +3,9 @@ import type {
 } from "./types";
 
 /** Calls the back end. If a shared API client arrives from the team, only this file changes. */
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? 'https://placement-assistant-backend-hyfp.onrender.com' : '')
+).replace(/\/$/, '');
 const ROOT = `${API_BASE}/api/v1`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

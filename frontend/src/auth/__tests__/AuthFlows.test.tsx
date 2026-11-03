@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import PortalSelection from '../PortalSelection';
 import PortalLoginForm from '../PortalLoginForm';
 import RegisterStudent from '../../pages/RegisterStudent';
 import ResetPassword from '../../pages/ResetPassword';
+import AuthApplication from '../AuthApplication';
+import { saveStoredSession, getStoredSession, clearStoredSession, SESSION_STORAGE_KEY } from '../sessionStore';
+import { normalizePath, isProtectedPath, resolveRegisteredView } from '../../app/routes';
+import type { AuthenticatedSession } from '../authApi';
 import { getPreferredTheme, toggleTheme, applyTheme } from '../../design-system/theme';
 
 describe('Theme System', () => {
@@ -129,5 +133,140 @@ describe('ResetPassword Page', () => {
 
     expect(screen.getByLabelText(/Reset Verification Token/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Set New Password/i })).toBeInTheDocument();
+  });
+});
+
+describe('Session Persistence Store', () => {
+  const dummySession: AuthenticatedSession = {
+    accessToken: 'test-access-token-xyz',
+    tokenType: 'Bearer',
+    expiresIn: 3600,
+    email: 'student@institute.ac.in',
+    roles: ['ROLE_STUDENT'],
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('saves session to both localStorage and sessionStorage', () => {
+    saveStoredSession(dummySession, 'INSTITUTE');
+
+    const localRaw = localStorage.getItem(SESSION_STORAGE_KEY);
+    const sessionRaw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+
+    expect(localRaw).toBeTruthy();
+    expect(sessionRaw).toBeTruthy();
+    expect(JSON.parse(localRaw!).session.accessToken).toBe('test-access-token-xyz');
+    expect(JSON.parse(sessionRaw!).portal).toBe('INSTITUTE');
+  });
+
+  it('retrieves active unexpired session from storage', () => {
+    saveStoredSession(dummySession, 'PLACEMENT');
+
+    const result = getStoredSession();
+    expect(result).not.toBeNull();
+    expect(result?.session.email).toBe('student@institute.ac.in');
+    expect(result?.portal).toBe('PLACEMENT');
+  });
+
+  it('clears and ignores expired sessions', () => {
+    const expiredPayload = {
+      session: dummySession,
+      portal: 'INSTITUTE',
+      storedAt: Date.now() - 4000 * 1000, // 4000s ago, exceeds 3600s
+    };
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(expiredPayload));
+
+    const result = getStoredSession();
+    expect(result).toBeNull();
+    expect(localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+  });
+
+  it('clears stored session on logout', () => {
+    saveStoredSession(dummySession, 'INSTITUTE');
+    clearStoredSession();
+
+    expect(localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+    expect(getStoredSession()).toBeNull();
+  });
+});
+
+describe('Routing and Session Refresh Handling', () => {
+  const dummySession: AuthenticatedSession = {
+    accessToken: 'test-token-active',
+    tokenType: 'Bearer',
+    expiresIn: 3600,
+    email: 'student@institute.ac.in',
+    roles: ['ROLE_STUDENT'],
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.history.pushState({}, '', '/');
+  });
+
+  it('normalizes trailing slashes and identifies protected paths', () => {
+    expect(normalizePath('/auth/session/')).toBe('/auth/session');
+    expect(normalizePath('/')).toBe('/');
+    expect(isProtectedPath('/auth/session')).toBe(true);
+    expect(isProtectedPath('/auth/session/')).toBe(true);
+    expect(isProtectedPath('/dashboard')).toBe(true);
+    expect(isProtectedPath('/institute/login')).toBe(false);
+    expect(resolveRegisteredView('/auth/session/')).toBe('AUTH_SESSION');
+  });
+
+  it('restores authenticated session on refresh at /auth/session instead of showing 404', () => {
+    saveStoredSession(dummySession, 'INSTITUTE');
+    window.history.pushState({}, '', '/auth/session');
+
+    render(<AuthApplication />);
+
+    // Must NOT display "Page not found"
+    expect(screen.queryByText(/Page not found/i)).not.toBeInTheDocument();
+    // Must render the authenticated student workspace / dashboard
+    expect(screen.getByText(/Offer Path & What-If/i)).toBeInTheDocument();
+    expect(screen.getByText(/student@institute.ac.in/i)).toBeInTheDocument();
+  });
+
+  it('redirects unauthenticated refresh at /auth/session to login flow instead of 404', () => {
+    clearStoredSession();
+    window.history.pushState({}, '', '/auth/session');
+
+    render(<AuthApplication />);
+
+    // Must NOT display "Page not found"
+    expect(screen.queryByText(/Page not found/i)).not.toBeInTheDocument();
+    // Must render the Institute Portal sign in form
+    expect(screen.getByText(/Institute Portal sign in/i)).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/institute/login');
+  });
+
+  it('renders 404 page for genuinely unknown routes', () => {
+    window.history.pushState({}, '', '/non-existent-route-99');
+
+    render(<AuthApplication />);
+
+    expect(screen.getByText(/Page not found/i)).toBeInTheDocument();
+    expect(screen.getByText(/\/non-existent-route-99/i)).toBeInTheDocument();
+  });
+
+  it('clears session and returns to portal landing on sign out', async () => {
+    saveStoredSession(dummySession, 'INSTITUTE');
+    window.history.pushState({}, '', '/auth/session');
+
+    render(<AuthApplication />);
+
+    const signOutBtn = screen.getByRole('button', { name: /Sign out/i });
+    await act(async () => {
+      fireEvent.click(signOutBtn);
+    });
+
+    expect(getStoredSession()).toBeNull();
+    expect(screen.getByText(/Sign in to Institute Portal/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sign in to Placement Portal/i)).toBeInTheDocument();
   });
 });
