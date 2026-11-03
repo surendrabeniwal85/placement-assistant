@@ -14,6 +14,8 @@ import {
   fetchMyApplication,
 } from '../auth/authApi';
 
+import './offer-path.css';
+
 interface OfferPathStudentViewProps {
   readonly token: string;
   readonly studentProfile: StudentProfileDto | null;
@@ -259,14 +261,22 @@ export default function OfferPathStudentView({
               Drive Readiness Rate
             </span>
             <span
-              style={{
-                fontFamily: 'var(--pa-font-display)',
-                fontSize: '28px',
-                fontWeight: 700,
-                color: readinessMetrics.percent >= 66 ? '#10b981' : '#f59e0b',
-              }}
+              className={`op-ring ${readinessMetrics.percent >= 66 ? 'op-ring-good' : 'op-ring-warn'}`}
+              role="img"
+              aria-label={`${readinessMetrics.percent} percent of drives qualified`}
             >
-              {readinessMetrics.percent}%
+              <svg viewBox="0 0 36 36" aria-hidden="true">
+                <circle className="op-ring-track" cx="18" cy="18" r="15.9" pathLength={100} />
+                <circle
+                  className="op-ring-fill"
+                  cx="18"
+                  cy="18"
+                  r="15.9"
+                  pathLength={100}
+                  strokeDasharray={`${readinessMetrics.percent} 100`}
+                />
+              </svg>
+              <strong>{readinessMetrics.percent}%</strong>
             </span>
             <small style={{ fontSize: '11px', color: 'var(--pa-color-muted)' }}>
               {readinessMetrics.eligibleCount} of {readinessMetrics.total} Drives Qualified

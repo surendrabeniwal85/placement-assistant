@@ -1,0 +1,57 @@
+/* Offer Path styles (owner: Aliza). Colours come from the shared --pa-* tokens. */
+
+.op-ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 4px 0;
+}
+
+.op-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.op-ring-track,
+.op-ring-fill {
+  fill: none;
+  stroke-width: 3.2;
+}
+
+.op-ring-track {
+  stroke: var(--pa-color-border);
+}
+
+.op-ring-fill {
+  stroke: var(--pa-color-teal);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.op-ring-warn .op-ring-fill {
+  stroke: var(--pa-color-saffron);
+}
+
+.op-ring strong {
+  font-family: var(--pa-font-display);
+  font-size: 20px;
+  color: var(--pa-color-text);
+}
+
+/* MISSING rules: the page uses the class "amber", which had no style before. */
+.eligibility-pill.amber {
+  color: var(--pa-color-saffron);
+  background: color-mix(in srgb, var(--pa-color-saffron) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pa-color-saffron) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-ring-fill {
+    transition: none;
+  }
+}
