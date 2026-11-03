@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import BrandHeader from './BrandHeader';
 import { login, type AuthenticatedSession, type Portal } from './authApi';
 
@@ -26,11 +26,20 @@ export default function PortalLoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSlow, setIsSlow] = useState(false);
+
+  // If sign-in takes more than a few seconds, tell the user the server may be waking up.
+  useEffect(() => {
+    if (!isSubmitting) return;
+    const timer = setTimeout(() => setIsSlow(true), 6000);
+    return () => clearTimeout(timer);
+  }, [isSubmitting]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     setIsSubmitting(true);
+    setIsSlow(false);
     try {
       const session = await login(portal, email.trim(), password);
       setPassword('');
@@ -92,6 +101,11 @@ export default function PortalLoginForm({
           </div>
 
           {error && <p className="auth-error" role="alert" aria-live="polite">{error}</p>}
+          {isSubmitting && isSlow && (
+            <p role="status" aria-live="polite" style={{ margin: 0, fontSize: '13px', opacity: 0.8 }}>
+              The server may be waking up. This can take up to a minute, so please keep this page open.
+            </p>
+          )}
 
           <button className="auth-submit" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Verifying credentials…' : 'Sign in'}
