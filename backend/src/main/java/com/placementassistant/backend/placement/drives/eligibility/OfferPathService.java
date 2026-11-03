@@ -139,7 +139,7 @@ public class OfferPathService {
                     student.getActiveBacklogs(),
                     student.getClass10Percent(),
                     student.getClass12Percent(),
-                    BigDecimal.valueOf(88.0), // Current average or profile metric
+                    null, // attendance: not available here, so it shows as MISSING
                     student.getBranch(),
                     student.getPassingYear(),
                     student.getAtsScore()
@@ -219,16 +219,7 @@ public class OfferPathService {
                         c.getPassingYear(),
                         c.getMinAtsScore()
                 ))
-                .orElseGet(() -> new EligibilityRules.Limits(
-                        BigDecimal.valueOf(7.0),
-                        0,
-                        null,
-                        null,
-                        BigDecimal.valueOf(75.0),
-                        "CSE,IT,ECE",
-                        2027,
-                        60
-                ));
+                .orElseGet(() -> new EligibilityRules.Limits(null, null, null, null, null, null, null, null));
     }
 
     private StudentFacts resolveStudentFacts(String studentEmail) {

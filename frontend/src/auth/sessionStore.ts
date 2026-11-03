@@ -66,3 +66,4 @@ export function clearStoredSession(): void {
     // Gracefully handle storage errors
   }
 }
+

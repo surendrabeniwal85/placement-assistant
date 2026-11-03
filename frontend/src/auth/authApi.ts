@@ -437,3 +437,29 @@ export async function sendTargetedNudge(
     body: JSON.stringify({ customMessage }),
   });
 }
+
+export interface ApplicationDto {
+  readonly driveId: number;
+  readonly status: string;
+  readonly appliedAt: string | null;
+}
+
+export async function applyToDrive(driveId: number, token: string): Promise<ApplicationDto> {
+  return request<ApplicationDto>(`/api/v1/drives/${driveId}/applications`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function withdrawApplication(driveId: number, token: string): Promise<ApplicationDto> {
+  return request<ApplicationDto>(`/api/v1/drives/${driveId}/applications`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function fetchMyApplication(driveId: number, token: string): Promise<ApplicationDto> {
+  return request<ApplicationDto>(`/api/v1/drives/${driveId}/applications/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}

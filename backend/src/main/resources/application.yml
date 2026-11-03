@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: campus-connect-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/placement_assistant}
+    username: ${SPRING_DATASOURCE_USERNAME:campus_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:change_me_locally}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
