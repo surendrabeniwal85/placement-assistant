@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,21 +21,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpportunityController {
 
         private final OpportunityService service;
+        private final OpportunityAudience audience;
 
-        public OpportunityController(OpportunityService service) {
+        public OpportunityController(OpportunityService service, OpportunityAudience audience) {
                 this.service = service;
+                this.audience = audience;
         }
 
         @GetMapping
         public Page<OpportunityResponse> upcoming(@RequestParam(required = false) OpportunityType type,
                         @RequestParam(defaultValue = "0") int page,
-                        @RequestParam(defaultValue = "20") int size) {
-                return service.upcoming(type, PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100)));
+                        @RequestParam(defaultValue = "20") int size, Authentication authentication) {
+                return service.upcoming(type, audience.canSeeFinalYearOnly(authentication),
+                                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100)));
         }
 
         @GetMapping("/{id}")
-        public OpportunityResponse get(@PathVariable Long id) {
-                return service.get(id);
+        public OpportunityResponse get(@PathVariable Long id, Authentication authentication) {
+                return service.get(id, audience.canSeeFinalYearOnly(authentication));
         }
 
         @PostMapping

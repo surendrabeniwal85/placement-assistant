@@ -18,17 +18,21 @@ public class OpportunityService {
         }
 
         @Transactional(readOnly = true)
-        public Page<OpportunityResponse> upcoming(OpportunityType type, Pageable pageable) {
+        public Page<OpportunityResponse> upcoming(OpportunityType type, boolean seeAll, Pageable pageable) {
                 LocalDateTime now = LocalDateTime.now();
                 Page<Opportunity> page = type == null
-                                ? repository.findUpcoming(now, pageable)
-                                : repository.findUpcomingByType(type, now, pageable);
+                                ? repository.findUpcoming(now, seeAll, pageable)
+                                : repository.findUpcomingByType(type, now, seeAll, pageable);
                 return page.map(OpportunityResponse::from);
         }
 
         @Transactional(readOnly = true)
-        public OpportunityResponse get(Long id) {
-                return OpportunityResponse.from(find(id));
+        public OpportunityResponse get(Long id, boolean seeAll) {
+                Opportunity found = find(id);
+                if (found.isFinalYearOnly() && !seeAll) {
+                        throw new PlacementNotFoundException("Opportunity not found.");
+                }
+                return OpportunityResponse.from(found);
         }
 
         @Transactional
