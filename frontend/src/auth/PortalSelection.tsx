@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import BrandHeader from './BrandHeader';
 import { getApiBaseUrl } from './authApi';
+import './how-it-works.css';
 
 interface PortalSelectionProps {
   readonly onChoosePortal: (portalPath: '/institute/login' | '/placement/login') => void;
@@ -130,14 +131,12 @@ export default function PortalSelection({ onChoosePortal, onClaimAccount }: Port
 
         {/* Hero Section */}
         <div style={{ marginBottom: '36px' }}>
-          <p className="auth-eyebrow">NEXT-GENERATION CAMPUS PLACEMENT ECOSYSTEM</p>
+          <p className="auth-eyebrow">CLASSROOM TO CAREER, IN ONE PLACE</p>
           <h1 id="portal-selection-title" style={{ marginBottom: '16px' }}>
-            Seamless academic & career readiness in one unified platform.
+            Know exactly where you stand, from first lecture to final offer.
           </h1>
           <p className="auth-description" style={{ fontSize: '16px', maxWidth: '720px' }}>
-            Placement Assistant integrates institutional academic records, attendance monitoring,
-            deterministic resume ATS scoring, AI Coach guidance, and recruitment drive management
-            across 7 role-governed portals.
+            Track your attendance, academic progress and lectures. Then see which placement drives you qualify for, and what to improve next.
           </p>
         </div>
 
@@ -177,10 +176,7 @@ export default function PortalSelection({ onChoosePortal, onClaimAccount }: Port
               )}
             </div>
 
-            <p className="portal-account-note">
-              Authorized roles: <strong>STUDENT</strong>, <strong>TEACHER</strong>, <strong>HOD</strong>.
-              Uses institutional verification via <code>@institute.ac.in</code>.
-            </p>
+            <p className="portal-account-note">For students, teachers and the HOD. Sign in with your <code>@institute.ac.in</code> email.</p>
           </article>
 
           {/* Placement Portal Card */}
@@ -206,46 +202,44 @@ export default function PortalSelection({ onChoosePortal, onClaimAccount }: Port
               </button>
             </div>
 
-            <p className="portal-account-note">
-              Authorized roles: <strong>DIRECTOR_HR</strong>, <strong>TPO</strong>, <strong>D_TPO</strong>, <strong>PLACEMENT_COORDINATOR</strong>.
-              Managed under official placement governance.
-            </p>
+            <p className="portal-account-note">For the TPO, Deputy TPO, Placement Coordinators and Director HR.</p>
           </article>
         </div>
 
-        {/* Feature Highlights Grid */}
-        <section style={{ marginTop: '48px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px' }}>
-          <div className="pa-card" style={{ padding: '20px' }}>
-            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🤖</span>
-            <h3 style={{ margin: '0 0 6px', fontSize: '15px' }}>AI Resume ATS & Coach</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--pa-color-muted)', lineHeight: 1.5 }}>
-              Deterministic 0–100 scoring with impact keyword detection and 3 actionable next steps.
-            </p>
-          </div>
-
-          <div className="pa-card" style={{ padding: '20px' }}>
-            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>⚡</span>
-            <h3 style={{ margin: '0 0 6px', fontSize: '15px' }}>Automated Eligibility Engine</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--pa-color-muted)', lineHeight: 1.5 }}>
-              Instant verification against minimum CGPA, active backlogs, CRT attendance %, and branch requirements.
-            </p>
-          </div>
-
-          <div className="pa-card" style={{ padding: '20px' }}>
-            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>📰</span>
-            <h3 style={{ margin: '0 0 6px', fontSize: '15px' }}>Targeted Campus News Feed</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--pa-color-muted)', lineHeight: 1.5 }}>
-              Audience-tailored notices: off-campus drive notices are automatically filtered for final-year students.
-            </p>
-          </div>
-
-          <div className="pa-card" style={{ padding: '20px' }}>
-            <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🛡️</span>
-            <h3 style={{ margin: '0 0 6px', fontSize: '15px' }}>Dual-Tier RBAC Security</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--pa-color-muted)', lineHeight: 1.5 }}>
-              Stateless JWT authentication with HS256 cryptography, BCrypt/PBKDF2 hashing, and strict route protection.
-            </p>
-          </div>
+        {/* How it works */}
+        <section className="how-it-works" aria-labelledby="how-it-works-title">
+          <h2 id="how-it-works-title" className="how-title">How it works</h2>
+          <ol className="how-steps">
+            <li className="how-step">
+              <div className="how-step-head">
+                <span className="how-step-icon" aria-hidden="true">1</span>
+                <span className="how-step-line" aria-hidden="true" />
+              </div>
+              <p className="how-step-label">Step 1</p>
+              <h3>Sign in</h3>
+              <p className="how-step-text">Pick your portal and sign in with your institute email.</p>
+              <ul className="how-tags"><li>Institute</li><li>Placement</li></ul>
+            </li>
+            <li className="how-step">
+              <div className="how-step-head">
+                <span className="how-step-icon" aria-hidden="true">2</span>
+                <span className="how-step-line" aria-hidden="true" />
+              </div>
+              <p className="how-step-label">Step 2</p>
+              <h3>Track your progress</h3>
+              <p className="how-step-text">See attendance, grades and lectures without chasing anyone.</p>
+              <ul className="how-tags"><li>Attendance</li><li>Progress</li><li>Lectures</li></ul>
+            </li>
+            <li className="how-step">
+              <div className="how-step-head">
+                <span className="how-step-icon" aria-hidden="true">3</span>
+              </div>
+              <p className="how-step-label">Step 3</p>
+              <h3>Get placement-ready</h3>
+              <p className="how-step-text">Check each rule, try what-if, then apply and follow every round.</p>
+              <ul className="how-tags"><li>Eligibility</li><li>What-if</li><li>Apply</li></ul>
+            </li>
+          </ol>
         </section>
 
         {/* Footer */}
@@ -254,9 +248,7 @@ export default function PortalSelection({ onChoosePortal, onClaimAccount }: Port
             <strong>Campus Connect / Placement Assistant</strong> · College Project Demonstration Release
           </div>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <span>Java 25 · Spring Boot 4.1.1</span>
-            <span>MySQL 8 / Flyway v45</span>
-            <span>React & Vite</span>
+            <span>Powered by AI</span>
           </div>
         </footer>
       </div>
