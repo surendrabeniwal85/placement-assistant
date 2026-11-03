@@ -4,6 +4,7 @@ import {
   fetchStudentProfile,
   fetchNews,
   fetchUpcomingDrives,
+  fetchDriveEligibility,
   analyzeResume,
   fetchStaffAccounts,
   createStaffAccount,
@@ -51,6 +52,32 @@ export default function PortalDashboard({ session, portal, onSignOut }: PortalDa
   const [drives, setDrives] = useState<DriveDto[]>([]);
   const [loadingDrives, setLoadingDrives] = useState(false);
   const [selectedDriveForEligibility, setSelectedDriveForEligibility] = useState<DriveDto | null>(null);
+  const [eligibilityByDrive, setEligibilityByDrive] = useState<
+    Record<number, Awaited<ReturnType<typeof fetchDriveEligibility>>>
+  >({});
+
+  // Ask the backend about each drive.
+  useEffect(() => {
+    if (drives.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      drives.map((drive) =>
+        fetchDriveEligibility(drive.id, session.accessToken)
+          .then((res) => [drive.id, res] as const)
+          .catch(() => null),
+      ),
+    ).then((pairs) => {
+      if (cancelled) return;
+      const next: Record<number, Awaited<ReturnType<typeof fetchDriveEligibility>>> = {};
+      for (const pair of pairs) {
+        if (pair) next[pair[0]] = pair[1];
+      }
+      setEligibilityByDrive(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [drives, session]);
 
   // ATS scanner state
   const [resumeText, setResumeText] = useState('');
@@ -206,33 +233,20 @@ export default function PortalDashboard({ session, portal, onSignOut }: PortalDa
   }
 
   // Compute eligibility checklist for the selected drive
-  function computeEligibility(drive: DriveDto, facts: StudentProfileDto | null) {
-    if (!facts) return { eligible: true, items: [] };
-    const minCgpa = drive.minCgpa ?? 7.0;
-    const maxBacklogs = drive.maxBacklogs ?? 0;
-    const minCrt = drive.minCrtAttendance ?? 75.0;
-    const branches = drive.eligibleBranches ?? ['CSE', 'IT', 'ECE'];
-
-    const studentCgpa = facts.cgpa ?? 8.52;
-    const studentBacklogs = facts.activeBacklogs ?? 0;
-    const studentCrt = 88.0; // from records
-    const studentBranch = facts.branch ?? 'CSE';
-
-    const cgpaPass = studentCgpa >= minCgpa;
-    const backlogsPass = studentBacklogs <= maxBacklogs;
-    const crtPass = studentCrt >= minCrt;
-    const branchPass = branches.includes(studentBranch);
-
-    const eligible = cgpaPass && backlogsPass && crtPass && branchPass;
-
+  // Eligibility comes from the backend. The browser never guesses.
+  function computeEligibility(drive: DriveDto) {
+    const result = eligibilityByDrive[drive.id];
+    if (!result) {
+      return { checked: false, eligible: false, items: [] as { label: string; studentVal: string; pass: boolean }[] };
+    }
     return {
-      eligible,
-      items: [
-        { label: `Min CGPA: ${minCgpa}`, studentVal: `${studentCgpa}`, pass: cgpaPass },
-        { label: `Max Active Backlogs: ${maxBacklogs}`, studentVal: `${studentBacklogs}`, pass: backlogsPass },
-        { label: `CRT Attendance Threshold: ${minCrt}%`, studentVal: `${studentCrt}%`, pass: crtPass },
-        { label: `Eligible Branches: ${branches.join(', ')}`, studentVal: studentBranch, pass: branchPass },
-      ],
+      checked: true,
+      eligible: result.eligible,
+      items: result.rules.map((r) => ({
+        label: `${r.rule}: ${r.expected}`,
+        studentVal: r.actual,
+        pass: r.status !== 'FAIL',
+      })),
     };
   }
 
@@ -737,7 +751,7 @@ export default function PortalDashboard({ session, portal, onSignOut }: PortalDa
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
                 {drives.map((drive) => {
-                  const check = computeEligibility(drive, studentProfile);
+                  const check = computeEligibility(drive);
                   return (
                     <article
                       key={drive.id}
@@ -758,8 +772,8 @@ export default function PortalDashboard({ session, portal, onSignOut }: PortalDa
                           </span>
                           <h4 style={{ margin: '4px 0', fontSize: '18px' }}>{drive.roleTitle}</h4>
                         </div>
-                        <span className={`eligibility-pill ${check.eligible ? 'pass' : 'fail'}`}>
-                          {check.eligible ? '✓ Eligible' : '✕ Ineligible'}
+                        <span className={`eligibility-pill ${!check.checked ? '' : check.eligible ? 'pass' : 'fail'}`}>
+                          {!check.checked ? 'Checking…' : check.eligible ? '✓ Eligible' : '✕ Ineligible'}
                         </span>
                       </div>
 
@@ -1268,23 +1282,23 @@ export default function PortalDashboard({ session, portal, onSignOut }: PortalDa
             </div>
 
             {(() => {
-              const res = computeEligibility(selectedDriveForEligibility, studentProfile);
+              const res = computeEligibility(selectedDriveForEligibility);
               return (
                 <div style={{ display: 'grid', gap: '14px' }}>
                   <div
                     style={{
                       padding: '12px 16px',
                       borderRadius: '10px',
-                      background: res.eligible ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                      border: `1px solid ${res.eligible ? '#10b981' : '#ef4444'}`,
+                      background: !res.checked ? 'rgba(156, 163, 175, 0.12)' : res.eligible ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                      border: `1px solid ${!res.checked ? '#9ca3af' : res.eligible ? '#10b981' : '#ef4444'}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                     }}
                   >
                     <strong>Overall Eligibility Evaluation:</strong>
-                    <span className={`eligibility-pill ${res.eligible ? 'pass' : 'fail'}`}>
-                      {res.eligible ? '✓ Fully Eligible to Apply' : '✕ Does Not Meet Criteria'}
+                    <span className={`eligibility-pill ${!res.checked ? '' : res.eligible ? 'pass' : 'fail'}`}>
+                      {!res.checked ? 'Checking…' : res.eligible ? '✓ Fully Eligible to Apply' : '✕ Does Not Meet Criteria'}
                     </span>
                   </div>
 
