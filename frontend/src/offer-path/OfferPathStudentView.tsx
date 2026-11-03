@@ -9,6 +9,9 @@ import {
   fetchUpcomingDrives,
   fetchDriveEligibility,
   simulateOfferPath,
+  applyToDrive,
+  withdrawApplication,
+  fetchMyApplication,
 } from '../auth/authApi';
 
 interface OfferPathStudentViewProps {
@@ -30,6 +33,9 @@ export default function OfferPathStudentView({
   const [eligibilityMap, setEligibilityMap] = useState<Record<number, EligibilityResultDto>>({});
   const [loadingEligibility, setLoadingEligibility] = useState(false);
   const [eligibilityFailed, setEligibilityFailed] = useState(false);
+  const [applications, setApplications] = useState<Record<number, string>>({});
+  const [applyBusy, setApplyBusy] = useState(false);
+  const [applyMessage, setApplyMessage] = useState<string | null>(null);
 
   // What-If Simulation State
   const defaultCgpa = studentProfile?.cgpa ?? 8.52;
@@ -124,6 +130,46 @@ export default function OfferPathStudentView({
     return () => clearTimeout(timer);
   }, [simCgpa, simAttendance, simAts, simBacklogs, isSimulating, token, drives.length]);
 
+    const myStatus = selectedDriveId ? applications[selectedDriveId] : undefined;
+
+  // Load whether this student has already applied to the selected drive
+  useEffect(() => {
+    if (!token || !selectedDriveId) return;
+    fetchMyApplication(selectedDriveId, token)
+      .then((res) => setApplications((prev) => ({ ...prev, [selectedDriveId]: res.status })))
+      .catch(() => {});
+  }, [token, selectedDriveId]);
+
+  const handleApply = async () => {
+    if (!selectedDriveId) return;
+    setApplyBusy(true);
+    setApplyMessage(null);
+    try {
+      const res = await applyToDrive(selectedDriveId, token);
+      setApplications((prev) => ({ ...prev, [selectedDriveId]: res.status }));
+      setApplyMessage('Application submitted.');
+    } catch (e) {
+      setApplyMessage(e instanceof Error ? e.message : 'Could not submit the application.');
+    } finally {
+      setApplyBusy(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!selectedDriveId) return;
+    setApplyBusy(true);
+    setApplyMessage(null);
+    try {
+      const res = await withdrawApplication(selectedDriveId, token);
+      setApplications((prev) => ({ ...prev, [selectedDriveId]: res.status }));
+      setApplyMessage('Application withdrawn.');
+    } catch (e) {
+      setApplyMessage(e instanceof Error ? e.message : 'Could not withdraw the application.');
+    } finally {
+      setApplyBusy(false);
+    }
+  };
+
   // Reset simulation to official student facts
   const handleResetSimulation = () => {
     setSimCgpa(defaultCgpa);
@@ -155,6 +201,12 @@ export default function OfferPathStudentView({
 
   const activeDrive = drives.find((d) => d.id === selectedDriveId) ?? drives[0];
   const activeEligibility = selectedDriveId ? eligibilityMap[selectedDriveId] : null;
+  // When the sliders are moved, show what the simulation says for the selected drive.
+  const simulatedEligibility =
+    isSimulating && simulationResult
+      ? (simulationResult.simulatedResults.find((r) => r.driveId === selectedDriveId) ?? null)
+      : null;
+  const shownEligibility = simulatedEligibility ?? activeEligibility;
 
   return (
     <div className="offer-path-view" style={{ display: 'grid', gap: '24px' }}>
@@ -625,10 +677,16 @@ export default function OfferPathStudentView({
                     )}
                     {activeEligibility && (
                       <span
-                        className={`eligibility-pill ${activeEligibility.eligible ? 'pass' : 'fail'}`}
+                        className={`eligibility-pill ${shownEligibility?.eligible ? 'pass' : 'fail'}`}
                         style={{ display: 'inline-block', marginTop: '4px' }}
                       >
-                        {activeEligibility.eligible ? '✓ Fully Eligible' : '✕ Ineligible'}
+                        {simulatedEligibility
+                          ? simulatedEligibility.eligible
+                            ? '✓ Eligible with these changes'
+                            : '✕ Still ineligible with these changes'
+                          : activeEligibility.eligible
+                            ? '✓ Fully Eligible'
+                            : '✕ Ineligible'}
                       </span>
                     )}
                   </div>
@@ -638,13 +696,13 @@ export default function OfferPathStudentView({
               {/* Authoritative Rules List */}
               <div style={{ display: 'grid', gap: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pa-color-muted)' }}>
-                  AUTHORITATIVE CRITERIA BREAKDOWN:
+                  {simulatedEligibility ? 'WITH YOUR SIMULATED VALUES (NOT SAVED):' : 'AUTHORITATIVE CRITERIA BREAKDOWN:'}
                 </span>
 
                 {loadingEligibility ? (
                   <p style={{ fontSize: '12px', color: 'var(--pa-color-muted)' }}>Evaluating rules…</p>
-                ) : activeEligibility?.rules && activeEligibility.rules.length > 0 ? (
-                  activeEligibility.rules.map((ruleItem, idx) => (
+                ) : shownEligibility?.rules && shownEligibility.rules.length > 0 ? (
+                  shownEligibility.rules.map((ruleItem, idx) => (
                     <div
                       key={idx}
                       style={{
@@ -698,6 +756,16 @@ export default function OfferPathStudentView({
                 )}
               </div>
 
+              {applyMessage && (
+                <p role="status" style={{ margin: 0, fontSize: '13px', color: 'var(--pa-color-muted)' }}>
+                  {applyMessage}
+                </p>
+              )}
+              {myStatus === 'APPLIED' && (
+                <button type="button" className="quick-cred-btn" onClick={handleWithdraw} disabled={applyBusy} style={{ justifySelf: 'start' }}>
+                  Withdraw application
+                </button>
+              )}
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
@@ -708,12 +776,14 @@ export default function OfferPathStudentView({
                     opacity: activeEligibility?.eligible ? 1 : 0.6,
                     cursor: activeEligibility?.eligible ? 'pointer' : 'not-allowed',
                   }}
-                  disabled={!activeEligibility?.eligible}
-                  onClick={() => {
-                    alert(`Official application submitted for ${activeDrive.companyName} (${activeDrive.roleTitle})!`);
-                  }}
+                  disabled={!activeEligibility?.eligible || applyBusy || myStatus === 'APPLIED'}
+                  onClick={handleApply}
                 >
-                  {activeEligibility?.eligible ? '✓ Apply for Recruitment Drive →' : 'Ineligible — Review Actions Above'}
+                  {activeEligibility?.eligible
+                    ? (myStatus === 'APPLIED' ? '✓ Applied' : '✓ Apply for Recruitment Drive →')
+                    : simulatedEligibility?.eligible
+                      ? 'Not eligible yet — these simulated values would unlock it'
+                      : 'Ineligible — Review Actions Above'}
                 </button>
 
                 {onOpenAtsScanner && (
