@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,12 +38,14 @@ public class OpportunityController {
         }
 
         @PostMapping
+        @PreAuthorize("hasAnyRole('TPO', 'D_TPO', 'PLACEMENT_COORDINATOR')")
         @ResponseStatus(HttpStatus.CREATED)
         public OpportunityResponse create(@Valid @RequestBody OpportunityRequest request) {
                 return service.create(request);
         }
 
         @PutMapping("/{id}")
+        @PreAuthorize("hasAnyRole('TPO', 'D_TPO', 'PLACEMENT_COORDINATOR')")
         public OpportunityResponse update(@PathVariable Long id, @Valid @RequestBody OpportunityRequest request) {
                 return service.update(id, request);
         }

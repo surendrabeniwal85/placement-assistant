@@ -1,6 +1,7 @@
 package com.placementassistant.backend.placement.drives.criteria;
 
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,6 +25,7 @@ public class CriteriaController {
         }
 
         @PutMapping
+        @PreAuthorize("hasAnyRole('TPO', 'D_TPO')")
         public CriteriaResponse save(@PathVariable Long driveId, @Valid @RequestBody CriteriaRequest request) {
                 return service.save(driveId, request);
         }

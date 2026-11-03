@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,12 +37,14 @@ public class CompanyController {
         }
 
         @PostMapping
+        @PreAuthorize("hasAnyRole('TPO', 'D_TPO')")
         @ResponseStatus(HttpStatus.CREATED)
         public CompanyResponse create(@Valid @RequestBody CompanyRequest request) {
                 return service.create(request);
         }
 
         @PutMapping("/{id}")
+        @PreAuthorize("hasAnyRole('TPO', 'D_TPO')")
         public CompanyResponse update(@PathVariable Long id, @Valid @RequestBody CompanyRequest request) {
                 return service.update(id, request);
         }
